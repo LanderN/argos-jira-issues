@@ -61,6 +61,13 @@ jira = JIRA(credentials['host'],
             basic_auth=(credentials['username'],
                         credentials['password']))
 
+if (len(sys.argv) == 2 and str(sys.argv[1]) == "users"):
+  print("Username\t(Display Name)")
+  print("--------\t--------------")
+  for user in jira.search_users(''):
+    print(user.key + '\t(%s)' % user.displayName)
+  exit(0)
+
 if (len(sys.argv) == 4 and str(sys.argv[1]) == "transition"):
   issue = sys.argv[2]
   transition = sys.argv[3]
