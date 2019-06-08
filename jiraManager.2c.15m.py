@@ -45,7 +45,8 @@ if (len(sys.argv) > 1):
       timeStarted = datetime.fromtimestamp(float(timelog.readline()))
       timeNow = datetime.now()
       diffMinutes = (timeNow - timeStarted).seconds / 60
-      jira.add_worklog(issue, timeSpent=str(diffMinutes) + 'm', comment="Auto-logged by JIRA Issue Manager")
+      if diffMinutes >= 1:
+        jira.add_worklog(issue, timeSpent=str(diffMinutes) + 'm', comment="Auto-logged by JIRA Issue Manager")
       os.remove(".jira_progressstarted.txt")
 
     if (transition == "Resolved"):
