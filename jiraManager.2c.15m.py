@@ -112,7 +112,7 @@ if (len(inProgressIssues) == 0):
     for transition in [('Start progress', 'media-playback-start'), ('Deselect', 'media-playback-stop')]:
       addSubMenuItem(transition[0],
                      {
-                     'bash': "'python %s transition %s \"%s\"'" % (sys.argv[0], issue.key, transition[0]),
+                     'bash': "'python3 %s transition %s \"%s\"'" % (sys.argv[0], issue.key, transition[0]),
                      'iconName': transition[1]
                      })
 
@@ -135,8 +135,8 @@ else:
   for user in reviewers:
     rawUser = jira.user(user).raw
     addSubMenuItem(rawUser['displayName'], {'image': getAsBase64(rawUser['avatarUrls']['16x16']), 'imageWidth': 16, 'imageHeight': 16,
-                                            'bash': "'python %s transition %s \"Resolved\" %s'" % (sys.argv[0], issue.key, rawUser['key'])})
-  addMenuItem("Stop progress", {'bash': "'python %s transition %s \"Stop progress\"'" % (sys.argv[0], issue.key), 'iconName': 'media-playback-pause'})
+                                            'bash': "'python3 %s transition %s \"Resolved\" %s'" % (sys.argv[0], issue.key, rawUser['key'])})
+  addMenuItem("Stop progress", {'bash': "'python3 %s transition %s \"Stop progress\"'" % (sys.argv[0], issue.key), 'iconName': 'media-playback-pause'})
   addLinkToIssue(issue)
 
 addSeparator()
