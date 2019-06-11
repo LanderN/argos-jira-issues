@@ -31,7 +31,7 @@ if (len(sys.argv) > 1):
     for user in jira.search_users(''):
       print(user.key + '\t(%s)' % user.displayName)
 
-  elif (len(sys.argv) == 4 and str(sys.argv[1]) == "transition"):
+  elif (len(sys.argv) >= 4 and str(sys.argv[1]) == "transition"):
     issue = sys.argv[2]
     transition = sys.argv[3]
 
@@ -50,7 +50,7 @@ if (len(sys.argv) > 1):
       os.remove(".jira_progressstarted.txt")
 
     if (transition == "Resolved"):
-      jira.transition_issue(issue, transition, assignee=sys.argv[4])
+      jira.transition_issue(issue, transition, assignee={'name': sys.argv[4]})
     else:
       jira.transition_issue(issue, transition)
 
