@@ -28,7 +28,7 @@ if (len(sys.argv) > 1):
   if (len(sys.argv) == 2 and str(sys.argv[1]) == "users"):
     print("Username\t(Display Name)")
     print("--------\t--------------")
-    for user in jira.search_users(''):
+    for user in jira.search_users('', maxResults=150):
       print(user.key + '\t(%s)' % user.displayName)
 
   elif (len(sys.argv) >= 4 and str(sys.argv[1]) == "transition"):
