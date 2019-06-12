@@ -191,27 +191,43 @@ inProgressIssues = getIssueWithStatus("In Progress")
 trackingIssues = list(progress.keys())
 
 if len(trackingIssues) == 0:
-    addMenuItem(":coffee: Not working...")
-    addSeparator()
+    addMenuItem('💤  <span font_weight="normal">Not working...</span>')
+
     if len(nextIssues) == 0:
-        addMenuItem('Put issues in "Next" to work on them')
+        addSeparator()
+        addMenuItem('Put issues in "Next" to make them appear in this list')
 
 elif len(trackingIssues) > 1:
     addMenuItem("You can only track one issue!")
-    addMenuItem("Fix your configuration...")
+    addMenuItem("Something went wrong 🤭")
     addSeparator()
 
 else:
     issue = jira.issue(trackingIssues[0])
-    addMenuItem(":cold_sweat: Working on " + issue.key)
+    addMenuItem(
+        "👨‍💻  "
+        + issue.key
+        + ' - <span font_weight="normal">'
+        + issue.fields.summary
+        + "</span>"
+    )
     addSeparator()
     addMenuItem("<b>" + issue.fields.summary + "</b>")
     if issue.fields.description:
         addMenuItem(issue.fields.description)
 
+    addMenuItem(
+        "Stop progress",
+        {
+            "bash": "'%s transition %s \"Stop progress\"'" % (sys.argv[0], issue.key),
+            "iconName": "media-playback-pause-symbolic",
+        },
+    )
+
     if canTransitionTo(issue, "Resolved"):
         addMenuItem(
-            "Resolve and reassign for review", {"iconName": "document-properties"}
+            "Resolve and reassign for review",
+            {"iconName": "document-properties-symbolic"},
         )
         for user in reviewers:
             rawUser = jira.user(user).raw
@@ -226,13 +242,14 @@ else:
                 },
             )
 
-    addMenuItem(
-        "Stop progress",
-        {
-            "bash": "'%s transition %s \"Stop progress\"'" % (sys.argv[0], issue.key),
-            "iconName": "media-playback-pause",
-        },
-    )
+    if canTransitionTo(issue, "Select"):
+        addMenuItem(
+            "Select",
+            {
+                "iconName": "view-pin-symbolic",
+                "bash": "'%s transition %s \"Select\"'" % (sys.argv[0], issue.key),
+            },
+        )
 
     addLinkToIssue(issue)
 
@@ -241,8 +258,8 @@ addSeparator()
 for issue in nextIssues:
     addMenuItem("<b>%s</b>: %s" % (issue.key, issue.fields.summary))
     for transition in [
-        ("Start progress", "media-playback-start"),
-        ("Deselect", "media-playback-stop"),
+        ("Start progress", "media-playback-start-symbolic"),
+        ("Deselect", "edit-clear-symbolic"),
     ]:
         addSubMenuItem(
             transition[0],
@@ -266,4 +283,4 @@ addMenuItem(
         "image": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAMZJREFUOI2Vkj0OAUEAhb9IJOKn3PM5gEaCWqOROIIrKPWicAm9hEoidHyaXdaameUl00zevL8MpDEFZjWcKDL1ql6ALEZqJAT6QBvoAuO/7dWNbyRTxATOJQGB+T/vW+rDTwRTxDZ4BO66wKjOOQNWQE89+Y3aLeZ53yWwDggkt8jUS867A4uQQDVFeYNx3rO4bwKnyBZf/6LsXmAHTH5J8epewQHoqMe6LULuhQC/pAi5q25zgXQKda/eqgcYlCoOQxx1/wRTboLP64okfwAAAABJRU5ErkJggg==",
     },
 )
-addMenuItem("Refresh", {"bash": "", "iconName": "object-rotate-right"})
+addMenuItem("Refresh", {"bash": "", "iconName": "object-rotate-right-symbolic"})
