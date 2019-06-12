@@ -5,8 +5,13 @@ import os
 import sys
 from datetime import datetime
 
+import gi
 import requests
-from jira import JIRA
+from gi.repository import Gtk
+from jira import JIRA, exceptions
+
+gi.require_version("Gtk", "3.0")
+
 
 # LOAD CONFIGURATION
 
@@ -25,22 +30,23 @@ except FileNotFoundError:
   progress = {}
 
 
-def startProgress(issue):
+jira = JIRA(credentials['host'],
+            basic_auth=(credentials['username'],
+                        credentials['password']))
+
+
+# HELPER FUNCTIONS
+def startTracking(issue):
   global progress
 
-  for issueToStop in list(progress.keys()):
-    stopProgress(issueToStop)
-
-  jira.transition_issue(issue, "Start progress")
   with open('.jira_progress.json', 'w+') as f:
     progress[issue] = datetime.now().timestamp()
     json.dump(progress, f)
 
 
-def stopProgress(issue):
+def stopTracking(issue):
   global progress
 
-  jira.transition_issue(issue, "Stop progress")
   if (issue in progress.keys()):
     timeStarted = datetime.fromtimestamp(progress[issue])
     timeNow = datetime.now()
@@ -52,37 +58,6 @@ def stopProgress(issue):
       del progress[issue]
       json.dump(progress, f)
 
-
-jira = JIRA(credentials['host'],
-            basic_auth=(credentials['username'],
-                        credentials['password']))
-
-# COMMAND LINE INVOCATION
-
-if (len(sys.argv) > 1):
-  if (len(sys.argv) == 2 and str(sys.argv[1]) == "users"):
-    print("Username\t(Display Name)")
-    print("--------\t--------------")
-    for user in jira.search_users('', maxResults=150):
-      print(user.key + '\t(%s)' % user.displayName)
-
-  elif (len(sys.argv) >= 4 and str(sys.argv[1]) == "transition"):
-    issue = sys.argv[2]
-    transition = sys.argv[3]
-
-    if (transition == "Start progress"):
-      startProgress(issue)
-
-    if (transition == "Resolved" or transition == "Stop progress"):
-      stopProgress(issue)
-
-    if (transition == "Resolved"):
-      jira.transition_issue(issue, transition, assignee={'name': sys.argv[4]})
-
-  exit(0)
-
-
-# HELPER FUNCTIONS
 
 def getAsBase64(url):
     return base64.b64encode(requests.get(url).content).decode('utf-8')
@@ -121,6 +96,58 @@ def addLinkToIssue(issue, subMenu=False):
   link = '%s/projects/%s/issues/%s' % (credentials['host'], issue.key.split('-')[0], issue.key)
   addMenuItem("%sShow issue in browser..." % ('', '--')[subMenu], {'href': link, 'iconName': 'application-exit'})
 
+# COMMAND LINE INVOCATION
+
+if (len(sys.argv) > 1):
+  if len(sys.argv) == 2:
+    if str(sys.argv[1]) == "users":
+      print("Username\t(Display Name)")
+      print("--------\t--------------")
+      for user in jira.search_users('', maxResults=150):
+        print(user.key + '\t(%s)' % user.displayName)
+
+    if str(sys.argv[1]) == "custom":
+
+      window = Gtk.Window(title="Custom issue")
+      window.set_border_width(10)
+
+      vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+      window.add(vbox)
+
+      text = Gtk.Entry()
+      vbox.pack_start(text, True, True, 0)
+
+      button = Gtk.Button.new_with_label("Start progress")
+      vbox.pack_start(button, True, True, 0)
+
+      def start_progress(button):
+        startTracking(text.get_text())
+        exit()
+
+      button.connect("clicked", start_progress)
+
+      window.show_all()
+      window.connect("destroy", Gtk.main_quit)
+      Gtk.main()
+
+  elif (len(sys.argv) >= 4 and str(sys.argv[1]) == "transition"):
+    issue = sys.argv[2]
+    transition = sys.argv[3]
+
+    if (transition == "Start progress"):
+      for issueToStop in list(progress.keys()):
+        jira.transition_issue(issueToStop, "Stop progress")
+      startTracking(issue)
+
+    elif (transition == "Resolved" or transition == "Stop progress"):
+      stopTracking(issue)
+
+    if (transition == "Resolved"):
+      jira.transition_issue(issue, transition, assignee={'name': sys.argv[4]})
+    else:
+      jira.transition_issue(issue, transition)
+
+  exit(0)
 
 # MAIN PROGRAM START
 
@@ -128,11 +155,10 @@ nextIssues = getIssueWithStatus('Next')
 inProgressIssues = getIssueWithStatus('In Progress')
 
 if (len(inProgressIssues) == 0):
-  addMenuItem('Not working... :coffee:')
+  addMenuItem(':coffee: Not working...')
   addSeparator()
   if (len(nextIssues) == 0):
     addMenuItem('Put issues in "Next" to work on them')
-
 elif (len(inProgressIssues) > 1):
   addMenuItem('You may only have 1 issue with status "In progress"!')
   addMenuItem('Use JIRA to fix this')
@@ -140,7 +166,7 @@ elif (len(inProgressIssues) > 1):
 
 else:
   issue = inProgressIssues[0]
-  addMenuItem('Working on ' + issue.key + ' :cold_sweat:')
+  addMenuItem(':cold_sweat: Working on ' + issue.key)
   addSeparator()
   addMenuItem('<b>' + issue.fields.summary + '</b>')
   if (issue.fields.description):
@@ -159,12 +185,14 @@ for issue in nextIssues:
   addMenuItem("<b>%s</b>: %s" % (issue.key, issue.fields.summary))
   for transition in [('Start progress', 'media-playback-start'), ('Deselect', 'media-playback-stop')]:
     addSubMenuItem(transition[0],
-                    {
-                    'bash': "'%s transition %s \"%s\"'" % (sys.argv[0], issue.key, transition[0]),
-                    'iconName': transition[1]
-                    })
+                   {
+                   'bash': "'%s transition %s \"%s\"'" % (sys.argv[0], issue.key, transition[0]),
+                   'iconName': transition[1]
+                   })
 
   addLinkToIssue(issue, subMenu=True)
+
+# addMenuItem("Custom issue...", {'bash': "'%s custom'" % sys.argv[0]})
 
 addSeparator()
 
