@@ -39,6 +39,10 @@ jira = JIRA(
 def startTracking(issue):
     global progress
 
+    # Stop tracking other issues
+    for issueToStop in list(progress.keys()):
+        stopTracking(issueToStop)
+
     with open(".jira_progress.json", "w+") as f:
         progress[issue] = datetime.now().timestamp()
         json.dump(progress, f)
@@ -112,6 +116,14 @@ def addLinkToIssue(issue, subMenu=False):
     )
 
 
+def canTransitionTo(issue, transition):
+    matchingTransitions = [
+        (t["id"], t["name"]) for t in jira.transitions(issue) if t["name"] == transition
+    ]
+
+    return len(matchingTransitions) > 0
+
+
 # COMMAND LINE INVOCATION
 
 if len(sys.argv) > 1:
@@ -124,23 +136,27 @@ if len(sys.argv) > 1:
 
         if str(sys.argv[1]) == "custom":
 
-            window = Gtk.Window(title="Custom issue")
-            window.set_border_width(10)
+            window = Gtk.Window(title="Track other issue")
+            window.set_border_width(20)
 
             vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
             window.add(vbox)
 
+            label = Gtk.Label(label="Enter issue key:")
+            vbox.pack_start(label, True, True, 0)
+
             text = Gtk.Entry()
             vbox.pack_start(text, True, True, 0)
 
-            button = Gtk.Button.new_with_label("Start progress")
+            button = Gtk.Button.new_with_label("Start tracking time")
             vbox.pack_start(button, True, True, 0)
 
             def start_progress(button):
                 startTracking(text.get_text())
-                exit()
+                exit(0)
 
             button.connect("clicked", start_progress)
+            text.connect("activate", start_progress)
 
             window.show_all()
             window.connect("destroy", Gtk.main_quit)
@@ -152,16 +168,19 @@ if len(sys.argv) > 1:
 
         if transition == "Start progress":
             for issueToStop in list(progress.keys()):
-                jira.transition_issue(issueToStop, "Stop progress")
+                if canTransitionTo(issueToStop, "Stop progress"):
+                    jira.transition_issue(issueToStop, "Stop progress")
+
             startTracking(issue)
 
         elif transition == "Resolved" or transition == "Stop progress":
             stopTracking(issue)
 
-        if transition == "Resolved":
-            jira.transition_issue(issue, transition, assignee={"name": sys.argv[4]})
-        else:
-            jira.transition_issue(issue, transition)
+        if canTransitionTo(issue, transition):
+            if transition == "Resolved":
+                jira.transition_issue(issue, transition, assignee={"name": sys.argv[4]})
+            else:
+                jira.transition_issue(issue, transition)
 
     exit(0)
 
@@ -169,38 +188,44 @@ if len(sys.argv) > 1:
 
 nextIssues = getIssueWithStatus("Next")
 inProgressIssues = getIssueWithStatus("In Progress")
+trackingIssues = list(progress.keys())
 
-if len(inProgressIssues) == 0:
+if len(trackingIssues) == 0:
     addMenuItem(":coffee: Not working...")
     addSeparator()
     if len(nextIssues) == 0:
         addMenuItem('Put issues in "Next" to work on them')
 
-elif len(inProgressIssues) > 1:
-    addMenuItem('You may only have 1 issue with status "In progress"!')
-    addMenuItem("Use JIRA to fix this")
+elif len(trackingIssues) > 1:
+    addMenuItem("You can only track one issue!")
+    addMenuItem("Fix your configuration...")
     addSeparator()
 
 else:
-    issue = inProgressIssues[0]
+    issue = jira.issue(trackingIssues[0])
     addMenuItem(":cold_sweat: Working on " + issue.key)
     addSeparator()
     addMenuItem("<b>" + issue.fields.summary + "</b>")
     if issue.fields.description:
         addMenuItem(issue.fields.description)
-    addMenuItem("Resolve and reassign for review", {"iconName": "document-properties"})
-    for user in reviewers:
-        rawUser = jira.user(user).raw
-        addSubMenuItem(
-            rawUser["displayName"],
-            {
-                "image": getAsBase64(rawUser["avatarUrls"]["16x16"]),
-                "imageWidth": 16,
-                "imageHeight": 16,
-                "bash": "'%s transition %s \"Resolved\" %s'"
-                % (sys.argv[0], issue.key, rawUser["key"]),
-            },
+
+    if canTransitionTo(issue, "Resolved"):
+        addMenuItem(
+            "Resolve and reassign for review", {"iconName": "document-properties"}
         )
+        for user in reviewers:
+            rawUser = jira.user(user).raw
+            addSubMenuItem(
+                rawUser["displayName"],
+                {
+                    "image": getAsBase64(rawUser["avatarUrls"]["16x16"]),
+                    "imageWidth": 16,
+                    "imageHeight": 16,
+                    "bash": "'%s transition %s \"Resolved\" %s'"
+                    % (sys.argv[0], issue.key, rawUser["key"]),
+                },
+            )
+
     addMenuItem(
         "Stop progress",
         {
@@ -208,6 +233,7 @@ else:
             "iconName": "media-playback-pause",
         },
     )
+
     addLinkToIssue(issue)
 
 addSeparator()
@@ -229,7 +255,7 @@ for issue in nextIssues:
 
     addLinkToIssue(issue, subMenu=True)
 
-addMenuItem("Custom issue...", {"bash": "'%s custom'" % sys.argv[0]})
+addMenuItem("Track other issue...", {"bash": "'%s custom'" % sys.argv[0]})
 
 addSeparator()
 
