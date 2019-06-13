@@ -158,6 +158,7 @@ if len(sys.argv) > 1:
             button.connect("clicked", start_progress)
             text.connect("activate", start_progress)
 
+            window.set_position(Gtk.WindowPosition.CENTER)
             window.show_all()
             window.connect("destroy", Gtk.main_quit)
             Gtk.main()
