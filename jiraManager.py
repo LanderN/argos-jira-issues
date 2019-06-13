@@ -186,14 +186,17 @@ if len(sys.argv) > 1:
 
 # MAIN PROGRAM START
 
-nextIssues = getIssueWithStatus("Next")
-inProgressIssues = getIssueWithStatus("In Progress")
-trackingIssues = list(progress.keys())
+trackingIssues = [jira.issue(ticket) for ticket in list(progress.keys())]
+ticketList = [
+    ticket
+    for ticket in getIssueWithStatus("Next") + getIssueWithStatus("In Progress")
+    if ticket not in trackingIssues
+]
 
 if len(trackingIssues) == 0:
     addMenuItem('💤  <span font_weight="normal">Not working...</span>')
 
-    if len(nextIssues) == 0:
+    if len(ticketList) == 0:
         addSeparator()
         addMenuItem('Put issues in "Next" to make them appear in this list')
 
@@ -203,7 +206,7 @@ elif len(trackingIssues) > 1:
     addSeparator()
 
 else:
-    issue = jira.issue(trackingIssues[0])
+    issue = trackingIssues[0]
     addMenuItem(
         "👨‍💻  "
         + issue.key
@@ -255,18 +258,33 @@ else:
 
 addSeparator()
 
-for issue in nextIssues:
+for issue in ticketList:
     addMenuItem("<b>%s</b>: %s" % (issue.key, issue.fields.summary))
-    for transition in [
-        ("Start progress", "media-playback-start-symbolic"),
-        ("Deselect", "edit-clear-symbolic"),
-    ]:
+    addSubMenuItem(
+        ("Start tracking", "Start progress")[canTransitionTo(issue, "Start progress")],
+        {
+            "bash": "'%s transition %s \"%s\"'"
+            % (sys.argv[0], issue.key, "Start progress"),
+            "iconName": "media-playback-start-symbolic",
+        },
+    )
+
+    if canTransitionTo(issue, "Stop progress"):
         addSubMenuItem(
-            transition[0],
+            "Stop progress",
             {
                 "bash": "'%s transition %s \"%s\"'"
-                % (sys.argv[0], issue.key, transition[0]),
-                "iconName": transition[1],
+                % (sys.argv[0], issue.key, "Stop progress"),
+                "iconName": "media-playback-stop-symbolic",
+            },
+        )
+    if canTransitionTo(issue, "Deselect"):
+        addSubMenuItem(
+            "Deselect",
+            {
+                "bash": "'%s transition %s \"%s\"'"
+                % (sys.argv[0], issue.key, "Deselect"),
+                "iconName": "edit-clear-symbolic",
             },
         )
 
