@@ -12,6 +12,10 @@ from jira import JIRA
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # isort:skip
 
+issueListFilter = (
+    '(status = "Next" OR status = "In Progress") AND assignee in (currentUser())'
+)
+allowedTransitions = {}
 
 # LOAD CONFIGURATION
 
@@ -67,16 +71,35 @@ def stopTracking(issue):
             json.dump(progress, f)
 
 
-def getAsBase64(url):
-    return base64.b64encode(requests.get(url).content).decode("utf-8")
+def getUserInfoForKey(userKey):
+    userInfo = {}
+
+    try:
+        with open("cache/" + user + ".json", "r") as f:
+            userInfo = json.load(f)
+
+    except FileNotFoundError:
+        rawUser = jira.user(user).raw
+
+        try:
+            os.mkdir("cache")
+        except FileExistsError:
+            pass
+
+        with open("cache/" + user + ".json", "w+") as f:
+            base64Content = base64.b64encode(
+                requests.get(rawUser["avatarUrls"]["16x16"]).content
+            ).decode("utf-8")
+
+            userInfo = {"displayName": rawUser["displayName"], "avatar": base64Content}
+
+            json.dump(userInfo, f)
+
+    return userInfo
 
 
-def getIssueWithStatus(status):
-    return jira.search_issues(
-        'status = "'
-        + status
-        + '" AND resolution = Unresolved AND assignee in (currentUser())'
-    )
+def getIssueList():
+    return jira.search_issues(issueListFilter)
 
 
 def addSeparator():
@@ -117,6 +140,9 @@ def addLinkToIssue(issue, subMenu=False):
 
 
 def canTransitionTo(issue, transition):
+    if str(issue) in allowedTransitions.keys():
+        return transition in allowedTransitions[str(issue)]
+
     matchingTransitions = [
         (t["id"], t["name"]) for t in jira.transitions(issue) if t["name"] == transition
     ]
@@ -188,11 +214,12 @@ if len(sys.argv) > 1:
 # MAIN PROGRAM START
 
 trackingIssues = [jira.issue(ticket) for ticket in list(progress.keys())]
-ticketList = [
-    ticket
-    for ticket in getIssueWithStatus("Next") + getIssueWithStatus("In Progress")
-    if ticket not in trackingIssues
-]
+ticketList = [ticket for ticket in getIssueList() if ticket not in trackingIssues]
+
+for ticket in ticketList:
+    allowedTransitions[str(ticket)] = [
+        transition["name"] for transition in jira.transitions(ticket)
+    ]
 
 if len(trackingIssues) == 0:
     addMenuItem('💤  <span font_weight="normal">Not working...</span>')
@@ -234,15 +261,15 @@ else:
             {"iconName": "document-properties-symbolic"},
         )
         for user in reviewers:
-            rawUser = jira.user(user).raw
+            userInfo = getUserInfoForKey(user)
             addSubMenuItem(
-                rawUser["displayName"],
+                userInfo["displayName"],
                 {
-                    "image": getAsBase64(rawUser["avatarUrls"]["16x16"]),
+                    "image": userInfo["avatar"],
                     "imageWidth": 16,
                     "imageHeight": 16,
                     "bash": "'%s transition %s \"Resolved\" %s'"
-                    % (sys.argv[0], issue.key, rawUser["key"]),
+                    % (sys.argv[0], issue.key, user),
                 },
             )
 
