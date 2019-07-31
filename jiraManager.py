@@ -245,7 +245,14 @@ else:
     addSeparator()
     addMenuItem("<b>" + issue.fields.summary + "</b>")
     if issue.fields.description:
-        addMenuItem(issue.fields.description)
+        splitLines = issue.fields.description.splitlines()
+        amountOfLines = len(splitLines)
+        splitLines = splitLines[:20]
+
+        if amountOfLines > 20:
+            splitLines.append("...")
+
+        addMenuItem("\n".join(splitLines))
 
     addMenuItem(
         "Stop progress",
