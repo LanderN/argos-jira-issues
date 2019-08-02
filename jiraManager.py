@@ -6,6 +6,7 @@ import sys
 from datetime import datetime
 
 import gi
+import pytz
 import requests
 from jira import JIRA
 
@@ -52,18 +53,35 @@ def startTracking(issue):
         json.dump(progress, f)
 
 
+def calcTimeBetween(startDateTime: datetime, endDateTime: datetime):
+
+    # Some special cases for the forgetful among us
+    if startDateTime.date() != endDateTime.date():
+        endDateTime = startDateTime.replace(
+            hour=17, minute=30
+        )  # forgot to turn off at the end of the day
+    elif startDateTime < datetime.now().replace(
+        hour=12, minute=20
+    ) and endDateTime > datetime.now().replace(hour=13, minute=0):
+        startDateTime.hour = startDateTime.hour + 1  # forgot to turn off at noon
+
+    return endDateTime - startDateTime
+
+
 def stopTracking(issue):
     global progress
 
     if issue in progress.keys():
         timeStarted = datetime.fromtimestamp(progress[issue])
         timeNow = datetime.now()
-        diffMinutes = (timeNow - timeStarted).seconds / 60
+        diffMinutes = calcTimeBetween(timeStarted, timeNow).seconds / 60
         if diffMinutes >= 1:
             jira.add_worklog(
                 issue,
                 timeSpent=str(diffMinutes) + "m",
                 comment="Auto-logged by JIRA Issue Manager",
+                started=timeStarted
+                - datetime.now(pytz.timezone("Europe/Brussels")).utcoffset(),
             )
 
         with open(".jira_progress.json", "w+") as f:
@@ -243,6 +261,11 @@ else:
         + "</span>"
     )
     addSeparator()
+    addMenuItem(
+        "⏲ <i>Tracking started at "
+        + datetime.fromtimestamp(progress[issue.key]).strftime("%H:%M")
+        + "</i>"
+    )
     addMenuItem("<b>" + issue.fields.summary + "</b>")
     if issue.fields.description:
         splitLines = issue.fields.description.splitlines()
