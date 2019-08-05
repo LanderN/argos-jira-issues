@@ -63,7 +63,7 @@ def calcTimeBetween(startDateTime: datetime, endDateTime: datetime):
     elif startDateTime < datetime.now().replace(
         hour=12, minute=20
     ) and endDateTime > datetime.now().replace(hour=13, minute=0):
-        startDateTime.hour = startDateTime.hour + 1  # forgot to turn off at noon
+        startDateTime.replace(hour=startDateTime.hour + 1)  # forgot to turn off at noon
 
     return endDateTime - startDateTime
 
