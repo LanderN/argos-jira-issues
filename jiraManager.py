@@ -162,7 +162,7 @@ def addMenuItem(text, options=None):
 
         for key in options:
             optionsText += "%s=%s " % (key, options[key])
-    print(text + optionsText)
+    print(text.replace("&", "&amp;").replace("|", "&#124;") + optionsText)
 
 
 def addSubMenuItem(text, options):
