@@ -170,9 +170,8 @@ def addSubMenuItem(text, options):
 
 
 def addLinkToIssue(issue, subMenu=False):
-    link = "%s/projects/%s/issues/%s" % (
+    link = "%s/browse/%s" % (
         credentials["host"],
-        issue.key.split("-")[0],
         issue.key,
     )
     addMenuItem(
