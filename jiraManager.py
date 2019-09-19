@@ -170,10 +170,7 @@ def addSubMenuItem(text, options):
 
 
 def addLinkToIssue(issue, subMenu=False):
-    link = "%s/browse/%s" % (
-        credentials["host"],
-        issue.key,
-    )
+    link = "%s/browse/%s" % (credentials["host"], issue.key)
     addMenuItem(
         "%sShow issue in browser..." % ("", "--")[subMenu],
         {"href": link, "iconName": "application-exit"},
@@ -279,12 +276,11 @@ if __name__ == "__main__":
 
     else:
         issue = trackingIssues[0]
+        title = issue.fields.summary
+        if len(title) > 45:
+            title = title[0:42] + "..."
         addMenuItem(
-            "👨‍💻  "
-            + issue.key
-            + ' - <span font_weight="normal">'
-            + issue.fields.summary
-            + "</span>"
+            "👨‍💻  " + issue.key + ' - <span font_weight="normal">' + title + "</span>"
         )
         addSeparator()
         addMenuItem(
@@ -294,11 +290,11 @@ if __name__ == "__main__":
         )
         addMenuItem("<b>" + issue.fields.summary + "</b>")
         if issue.fields.description:
-            splitLines = issue.fields.description.splitlines()
+            splitLines = [line[:80] for line in issue.fields.description.splitlines()]
             amountOfLines = len(splitLines)
-            splitLines = splitLines[:20]
+            splitLines = splitLines[:10]
 
-            if amountOfLines > 20:
+            if amountOfLines > 10:
                 splitLines.append("...")
 
             addMenuItem("\n".join(splitLines))
