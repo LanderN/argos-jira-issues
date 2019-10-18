@@ -20,7 +20,9 @@
 ## Usage
 See the [Argos README](https://github.com/p-e-w/argos/blob/master/README.md) for general information about how Argos works.
 
-Create `.jira_credentials.json` and `.jira_reviewers.json` in `~/.config/argos`:
+- Clone this repo wherever you like
+- Make a symlink to `jiraManager.py` in `~/.config/argos`
+- Create `.jira_credentials.json` and `.jira_reviewers.json` wherever you cloned this repo:
 ### .jira_credentials.json
 This file contains your credentials to log into JIRA.
 ```
@@ -30,7 +32,7 @@ This file contains your credentials to log into JIRA.
     "password": "<YOUR_API_KEY>"
 }
 ```
-Create an API key [here](https://id.atlassian.com/manage/api-tokens).
+- Create an API key [here](https://id.atlassian.com/manage/api-tokens).
 ### .jira_reviewers.json
 This file contains the **usernames** of users to display under "reassign for review".
 ```
