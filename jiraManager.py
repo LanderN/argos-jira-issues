@@ -98,7 +98,7 @@ def stopTracking(issue):
     if issue in progress.keys():
         timeStarted = datetime.fromtimestamp(progress[issue])
         timeNow = datetime.now()
-        diffMinutes = calcTimeBetween(timeStarted, timeNow).seconds / 60
+        diffMinutes = round(calcTimeBetween(timeStarted, timeNow).seconds / 60)
         if diffMinutes >= 1:
             jira.add_worklog(
                 issue,
